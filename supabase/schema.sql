@@ -14,6 +14,7 @@ create table public.categories (
 create table public.products (
   id uuid primary key default gen_random_uuid(), category_id uuid not null references public.categories(id) on delete cascade,
   name text not null, description text, price numeric(10,2) not null check (price >= 0), label text, position integer not null default 0,
+  press_price text, wash_press_price text, dry_clean_price text,
   is_available boolean not null default true, created_at timestamptz not null default now()
 );
 create index categories_menu_position on public.categories(menu_id, position);
