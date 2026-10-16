@@ -12,12 +12,9 @@ export async function GET(_: Request, { params }: { params: Promise<{ slug: stri
   if (!menu) return new NextResponse("Published menu not found.", { status: 404 });
 
   const assetPath = join(process.cwd(), "public", "blue-basket");
-  const [logo, cover] = await Promise.all([
-    readFile(join(assetPath, "logo_BB.png")),
-    readFile(join(assetPath, "front-reference.jpeg")),
-  ]);
-  const pdf = await createBlueBasketMenuPdf(menu, { logo, cover });
-  return new NextResponse(pdf, {
+  const logo = await readFile(join(assetPath, "logo_BB.png"));
+  const pdf = await createBlueBasketMenuPdf(menu, { logo });
+  return new NextResponse(new Uint8Array(pdf), {
     headers: {
       "Content-Type": "application/pdf",
       "Content-Disposition": `attachment; filename="${slug}-price-list.pdf"`,

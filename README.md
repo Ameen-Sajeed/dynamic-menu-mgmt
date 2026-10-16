@@ -1,6 +1,6 @@
 # Menu Studio
 
-Responsive Next.js menu management with Supabase Auth/Postgres, stable public links, QR download, a downloadable Blue Basket PDF, and print-ready two-sided menu layouts.
+Responsive Next.js price-list management with Supabase Auth/Postgres, stable public links, QR download, and a downloadable Blue Basket PDF.
 
 ## Set up
 
@@ -14,7 +14,7 @@ Responsive Next.js menu management with Supabase Auth/Postgres, stable public li
 
 All writes use the browser client under PostgreSQL Row Level Security. Only a menu owner can change a menu, its categories, or its products. Public readers can see only published menus. Do not add a Supabase service-role key to this project.
 
-After publishing, **Download PDF** produces an A4 price list from the current published menu. The reusable PDF renderer in `lib/pdf/blue-basket-menu.ts` uses the supplied front artwork, official logo and Blue Basket price-table layout; it paginates category tables before they can be clipped. **Print preview** remains available for the alternate A4, flyer and brochure browser-print layouts.
+After publishing, **Download PDF** produces a clean A4 price list from the current published menu. The reusable PDF renderer in `lib/pdf/blue-basket-menu.ts` uses the supplied official logo and Blue Basket price-table layout; it paginates category tables before they can be clipped.
 
 ## Deployment
 
