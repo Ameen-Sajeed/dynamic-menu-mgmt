@@ -2,7 +2,7 @@ import PDFDocument from "pdfkit";
 import type { Menu } from "@/lib/types";
 
 const navy = "#17165e";
-const blue = "#2688d5";
+const blue = "#17165e";
 const paleBlue = "#e6f2fb";
 const ink = "#252b42";
 const page = { width: 595.28, height: 841.89, margin: 36 };
@@ -11,6 +11,8 @@ const columns = [
   { label: "PRESS", width: 84, align: "center" as const },
   { label: "WASH &\nPRESS", width: 98, align: "center" as const },
   { label: "DRY\nCLEAN", width: 84, align: "center" as const },
+  { label: "WASH &\nDRY", width: 98, align: "center" as const },
+
 ];
 
 type PdfDocument = InstanceType<typeof PDFDocument>;

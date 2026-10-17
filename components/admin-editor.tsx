@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import QRCode from "qrcode";
 import { blueBasketCategories } from "@/lib/blue-basket-data";
 import { createClient } from "@/lib/supabase/client";
@@ -16,81 +16,88 @@ const blankProduct = (categoryId: string, position: number): Omit<Product, "id">
 export function AdminEditor({ initialMenu }: { initialMenu: EditableMenu }) {
   const [menu, setMenu] = useState<EditableMenu>(initialMenu);
   const [status, setStatus] = useState("");
+  const statusTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const notify = (message: string) => {
+    if (statusTimer.current) clearTimeout(statusTimer.current);
+    setStatus(message);
+    statusTimer.current = setTimeout(() => setStatus(""), 5000);
+  };
   const supabase = createClient();
   const publicUrl = useMemo(() => menu ? `${process.env.NEXT_PUBLIC_SITE_URL ?? location.origin}/menu/${menu.slug}` : "", [menu]);
   const replaceCategory = (next: Category) => menu && setMenu({ ...menu, categories: menu.categories.map((category) => category.id === next.id ? next : category) });
 
   async function setupBlueBasket() {
-    setStatus("Creating the Blue Basket price list...");
+    notify("Creating the Blue Basket price list...");
     const { data: created, error } = await supabase.from("menus").insert({ business_name: "BLUE BASKET LAUNDRY", slug: "blue-basket-laundry", accent_color: "#2688d5", logo_url: "/blue-basket/logo_BB.png" }).select("id,slug,business_name,logo_url,accent_color,is_published").single();
-    if (error || !created) return setStatus(error?.message ?? "Could not create the menu.");
+    if (error || !created) return notify(error?.message ?? "Could not create the menu.");
     const { data: categories, error: categoryError } = await supabase.from("categories").insert(blueBasketCategories.map((category, position) => ({ menu_id: created.id, name: category.name, position }))).select();
-    if (categoryError || !categories) return setStatus(categoryError?.message ?? "Menu created, but categories could not be added.");
+    if (categoryError || !categories) return notify(categoryError?.message ?? "Menu created, but categories could not be added.");
     const products = categories.flatMap((category, index) => blueBasketCategories[index].rows.map((row, position) => ({ category_id: category.id, name: row.name, price: 0, press_price: row.press, wash_press_price: row.washPress, dry_clean_price: row.dryClean, position, is_available: true })));
     const { data: savedProducts, error: productError } = await supabase.from("products").insert(products).select();
-    if (productError) return setStatus(productError.message);
+    if (productError) return notify(productError.message);
     setMenu({ ...created, categories: categories.map((category) => ({ ...category, products: (savedProducts ?? []).filter((product) => product.category_id === category.id) })) });
-    setStatus("Price list created. Review it, then publish when ready.");
+    notify("Price list created. Review it, then publish when ready.");
   }
 
   async function save() {
     if (!menu) return;
     const parsed = menuSchema.safeParse(menu);
-    if (!parsed.success) return setStatus(parsed.error.issues[0].message);
+    if (!parsed.success) return notify(parsed.error.issues[0].message);
     const { error } = await supabase.from("menus").update(parsed.data).eq("id", menu.id);
-    setStatus(error?.message ?? "Draft saved.");
+    notify(error?.message ?? "Draft saved.");
   }
 
   async function publish() {
     if (!menu) return;
     const parsed = menuSchema.safeParse(menu);
-    if (!parsed.success) return setStatus(parsed.error.issues[0].message);
+    if (!parsed.success) return notify(parsed.error.issues[0].message);
     const { error } = await supabase.from("menus").update({ ...parsed.data, is_published: true, published_at: new Date().toISOString() }).eq("id", menu.id);
     if (!error) setMenu({ ...menu, is_published: true });
-    setStatus(error?.message ?? "Published. The public menu and PDF now use these prices.");
+    notify(error?.message ?? "Published. The public menu and PDF now use these prices.");
   }
 
   async function addCategory() {
     if (!menu) return;
     const name = prompt("Category name?");
     const parsed = categorySchema.safeParse({ name });
-    if (!parsed.success) return setStatus("Enter a category name.");
+    if (!parsed.success) return notify("Enter a category name.");
     const { data, error } = await supabase.from("categories").insert({ menu_id: menu.id, name: parsed.data.name, position: menu.categories.length }).select().single();
-    if (error) return setStatus(error.message);
+    if (error) return notify(error.message);
     setMenu({ ...menu, categories: [...menu.categories, { ...data, products: [] }] });
   }
 
   async function updateCategory(category: Category, name: string) {
     const parsed = categorySchema.safeParse({ name, description: category.description });
-    if (!parsed.success) return setStatus(parsed.error.issues[0].message);
+    if (!parsed.success) return notify(parsed.error.issues[0].message);
     const { error } = await supabase.from("categories").update(parsed.data).eq("id", category.id);
-    setStatus(error?.message ?? "Category saved.");
+    notify(error?.message ?? "Category saved.");
   }
 
   async function deleteCategory(id: string) {
     if (!menu || !confirm("Delete this category and all of its items?")) return;
     const { error } = await supabase.from("categories").delete().eq("id", id);
     if (!error) setMenu({ ...menu, categories: menu.categories.filter((category) => category.id !== id) });
-    setStatus(error?.message ?? "Category deleted.");
+    notify(error?.message ?? "Category deleted.");
   }
 
   async function addProduct(category: Category) {
     const { data, error } = await supabase.from("products").insert(blankProduct(category.id, category.products.length)).select().single();
-    if (error) return setStatus(error.message);
+    if (error) return notify(error.message);
     replaceCategory({ ...category, products: [...category.products, data] });
   }
 
   async function updateProduct(category: Category, product: Product) {
     const parsed = productSchema.safeParse(product);
-    if (!parsed.success) return setStatus(parsed.error.issues[0].message);
+    if (!parsed.success) return notify(parsed.error.issues[0].message);
     const { error } = await supabase.from("products").update(parsed.data).eq("id", product.id);
-    setStatus(error?.message ?? "Item saved.");
+    notify(error?.message ?? "Item saved.");
   }
 
   async function deleteProduct(category: Category, id: string) {
+    if (!confirm("Delete this item?")) return;
     const { error } = await supabase.from("products").delete().eq("id", id);
     if (!error) replaceCategory({ ...category, products: category.products.filter((product) => product.id !== id) });
-    setStatus(error?.message ?? "Item deleted.");
+    notify(error?.message ?? "Item deleted.");
   }
 
   async function downloadQr() {

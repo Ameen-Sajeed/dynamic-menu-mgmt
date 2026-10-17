@@ -7,5 +7,5 @@ export async function getMenu(slug: string, publishedOnly = true): Promise<Menu 
   if (publishedOnly) query = query.eq("is_published", true);
   const { data, error } = await query.single();
   if (error || !data) return null;
-  return { ...data, categories: (data.categories ?? []).sort((a, b) => a.position - b.position).map((category) => ({ ...category, products: (category.products ?? []).filter((p) => p.is_available).sort((a, b) => a.position - b.position) })) } as Menu;
+  return { ...data, categories: (data.categories ?? []).sort((a, b) => a.position - b.position).map((category) => ({ ...category, products: (category.products ?? []).filter((p) => publishedOnly ? p.is_available : true).sort((a, b) => a.position - b.position) })) } as Menu;
 }
